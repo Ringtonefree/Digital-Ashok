@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text to Speech with Download</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      margin-bottom: 10px;
+    }
+    select, button {
+      margin: 5px 0;
+      padding: 10px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Text to Speech with Download</h1>
+  <textarea id="text" placeholder="এখানে টেক্সট লিখুন..."></textarea>
+  <select id="voiceSelect"></select>
+  <button id="speakBtn">Speak</button>
+  <button id="downloadBtn">Download</button>
+  <audio id="player" controls style="width: 100%; margin-top: 10px;"></audio>
+
+  <script>
+    const textInput = document.getElementById("text");
+    const voiceSelect = document.getElementById("voiceSelect");
+    const speakBtn = document.getElementById("speakBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const audioPlayer = document.getElementById("player");
+
+    let voices = [];
+    let mediaRecorder;
+    let audioChunks = [];
+
+    function populateVoices() {
+      voices = speechSynthesis.getVoices();
+      voiceSelect.innerHTML = "";
+      voices.forEach((voice, i) => {
+        const option = document.createElement("option");
+        option.value = i;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        voiceSelect.appendChild(option);
+      });
+    }
+    speechSynthesis.onvoiceschanged = populateVoices;
+
+    async function speakAndRecord() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = event => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/wav' });
+        const audioURL = URL.createObjectURL(blob);
+        audioPlayer.src = audioURL;
+
+        const downloadLink = document.createElement("a");
+        downloadLink.href = audioURL;
+        downloadLink.download = "speech.wav";
+        downloadLink.click();
+      };
+
+      mediaRecorder.start();
+
+      const utterance = new SpeechSynthesisUtterance(textInput.value);
+      utterance.voice = voices[voiceSelect.value];
+
+      utterance.onend = () => {
+        mediaRecorder.stop();
+      };
+
+      speechSynthesis.speak(utterance);
+    }
+
+    speakBtn.onclick = () => {
+      speechSynthesis.cancel();
+      speakAndRecord();
+    };
+
+    downloadBtn.onclick = () => {
+      alert("Download will happen automatically after speech finishes.");
+    };
+  </script>
+</body>
+</html>
